@@ -1,31 +1,43 @@
 # nobunaga
 
-Ruby linter (early stage): pure-Ruby engine with a **`fix` command** for autocorrect. A native (Rust) engine is planned.
+Ruby linter with a **Rust native extension** (Magnus + Prism via `ruby-prism`). Ruby オーケストレーション層が CLI・ファイル走査・autocorrect を担当し、解析と `Lint/BigDecimalNew` などの AST ルールはネイティブで実行します。
+
+## Requirements
+
+- **Ruby** 3.1+
+- **Rust** stable（`rust-toolchain.toml` 参照; `ruby-prism` は新しめの rustc が必要）
+- `cargo`, `clang` / ビルドツール（`rb-sys` が Ruby ヘッダにリンク）
 
 ## CLI
 
 ```bash
-ruby -Ilib exe/nobunaga check [paths...]   # default paths: .
-ruby -Ilib exe/nobunaga fix [paths...]     # apply autocorrects in place
+bundle exec nobunaga check [paths...]   # default: .
+bundle exec nobunaga fix [paths...]     # safe autocorrect (in-place)
 ```
 
-After `gem install` / `bundle exec`, use `nobunaga` on your `PATH`.
+- **`check`** — offenses を表示; 違反があれば終了コード `1`
+- **`fix`** — 重ならない `Correction` を適用し、残りを表示; 残違反があれば `1`
 
-- **`check`** — print offenses; exit `1` if any.
-- **`fix`** — apply all non-overlapping corrections, then print any remaining (non-autocorrectable) offenses; exit `1` if any remain.
+## Native engine
 
-## Autocorrect model
+- `Nobunaga::Native.inspect_source(path, source)` → 診断の配列（Hash 互換）
+- **Prism 構文エラー** → `rule_id`: `Syntax/PrismParseError`
+- **Lint/BigDecimalNew** → RuboCop と同じ cop 名（parity テストあり）
 
-Each offense may carry `Correction` objects (UTF-8 byte range + replacement). The runner applies them from the end of the file toward the start so indices stay valid. Rules use RuboCop-style `rule_id` values where applicable (e.g. `Layout/TrailingWhitespace`).
+## RuboCop parity (KGI)
+
+- [docs/rubocop-parity.md](docs/rubocop-parity.md) — 基準バージョンと定義
+- [docs/github-epic-rubocop-parity.md](docs/github-epic-rubocop-parity.md) — GitHub 用エピック Issue テンプレ（英語）
 
 ## Development
 
 ```bash
-ruby -Ilib:test test/nobunaga_autocorrect_test.rb
-# or, with Bundler:
+bundle config set --local path vendor/bundle   # optional: user-writable gems
 bundle install
-bundle exec rake test
+bundle exec rake test    # compiles ext → lib/nobunaga/nobunaga.so then runs tests
 ```
+
+手動ビルド: `rake compile` または `cargo build --release --manifest-path ext/nobunaga/Cargo.toml --locked`
 
 ## License
 
