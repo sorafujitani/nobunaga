@@ -7,4 +7,6 @@ gemspec
 group :development do
   gem "minitest", "~> 5.0"
   gem "rake", "~> 13.0"
+  gem "rake-compiler", "~> 1.2"
+  gem "rb_sys", "~> 0.9.126"
 end

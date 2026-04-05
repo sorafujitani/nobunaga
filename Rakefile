@@ -1,24 +1,29 @@
 # frozen_string_literal: true
 
 require "rake/testtask"
-require "fileutils"
-require "rbconfig"
+require "rb_sys/extensiontask"
 
-desc "Build the Rust extension into lib/nobunaga/"
-task :compile do
-  ext = File.expand_path("ext/nobunaga", __dir__)
-  dest_dir = File.expand_path("lib/nobunaga", __dir__)
-  FileUtils.mkdir_p(dest_dir)
-  sh "cargo build --release --manifest-path #{File.join(ext, 'Cargo.toml')} --locked"
-  profile = "release"
-  dlext = RbConfig::CONFIG["DLEXT"]
-  pattern = File.join(ext, "target", profile, "libnobunaga.*")
-  built = Dir[pattern].find { |f| f.match?(/\.(so|dylib|dll)\z/) }
-  raise "native library not found (glob: #{pattern})" unless built
+REPO_ROOT = __dir__
+GEMSPEC = Gem::Specification.load(File.expand_path("nobunaga.gemspec", REPO_ROOT))
 
-  out = File.join(dest_dir, "nobunaga.#{dlext}")
-  FileUtils.cp(built, out)
-  puts "Installed #{out}"
+# Default RbSys source_files globs match `**/Cargo.lock` and pull in bundled gems' manifests.
+class NobunagaExtensionTask < RbSys::ExtensionTask
+  def source_files
+    list = FileList[
+      "#{ext_dir}/**/*.{rs,rb,c,h,toml}",
+      File.join(REPO_ROOT, "Cargo.toml"),
+      File.join(REPO_ROOT, "Cargo.lock")
+    ]
+    list.exclude(File.join(target_directory, "**/*")) if defined?(target_directory)
+    list
+  end
+end
+
+Dir.chdir(File.join(REPO_ROOT, "ext/nobunaga")) do
+  NobunagaExtensionTask.new("nobunaga", GEMSPEC) do |ext|
+    # Must stay relative: rake-compiler computes Pathname relative to tmp build dir.
+    ext.lib_dir = "lib/nobunaga"
+  end
 end
 
 Rake::TestTask.new(:test) do |t|

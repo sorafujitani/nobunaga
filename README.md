@@ -39,7 +39,9 @@ bundle install
 bundle exec rake test    # compiles ext → lib/nobunaga/nobunaga.so then runs tests
 ```
 
-手動ビルド: `rake compile` または `cargo build --release --manifest-path ext/nobunaga/Cargo.toml --locked`
+ビルドは **`rb_sys` + `ext/nobunaga/extconf.rb`** 経由で libruby にリンクします（macOS CI でのリンクエラー対策）。ルートの `Cargo.toml` はワークスペース定義、`Cargo.lock` はリポジトリにコミットします。
+
+手動: `rake compile` または `cargo clippy` / `cargo build`（`--manifest-path ext/nobunaga/Cargo.toml --locked`）
 
 ## License
 

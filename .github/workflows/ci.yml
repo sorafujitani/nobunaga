@@ -31,7 +31,7 @@ jobs:
         with:
           components: clippy
 
-      - name: Clippy (extension)
+      - name: Clippy (workspace / extension crate)
         run: cargo clippy --manifest-path ext/nobunaga/Cargo.toml --locked -- -D warnings
 
       - name: Bundle install

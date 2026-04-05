@@ -3,5 +3,7 @@
 /lib/nobunaga/nobunaga.bundle
 /lib/nobunaga/nobunaga.dll
 /ext/nobunaga/target/
+/target/
+/tmp/
 /.bundle/
 *.gem
