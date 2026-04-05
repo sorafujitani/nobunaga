@@ -1,4 +1,4 @@
-//! Nobunaga native extension: Prism parse + `Lint/BigDecimalNew` (AST).
+//! Nobunaga native extension: Prism parse + Lint cops (AST).
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
@@ -41,22 +41,48 @@ fn is_bigdecimal_root<'pr>(node: &'pr Node<'pr>) -> Option<ConstantReadNode<'pr>
 }
 
 #[derive(Default)]
-struct BigDecimalNewVisitor {
-    /// Byte offsets of the `BigDecimal` constant (start of offense range).
-    hits: Vec<usize>,
+struct NativeLintVisitor {
+    bigdecimal_hits: Vec<usize>,
+    /// (start_byte, message)
+    debugger_hits: Vec<(usize, String)>,
 }
 
-impl<'pr> Visit<'pr> for BigDecimalNewVisitor {
+impl<'pr> Visit<'pr> for NativeLintVisitor {
     fn visit_call_node(&mut self, node: &CallNode<'pr>) {
-        if node.call_operator_loc().is_some() {
+        // Lint/Debugger — subset of RuboCop defaults: `debugger`, `binding.pry`
+        if node.name().as_slice() == b"debugger" && node.receiver().is_none() {
+            let loc = node.location();
+            let snippet = std::str::from_utf8(loc.as_slice()).unwrap_or("debugger");
+            self.debugger_hits.push((
+                loc.start_offset(),
+                format!("Remove debugger entry point `{snippet}`."),
+            ));
+        } else if node.name().as_slice() == b"pry" {
             if let Some(recv) = node.receiver() {
-                if let Some(cread) = is_bigdecimal_root(&recv) {
-                    if node.name().as_slice() == b"new" {
-                        self.hits.push(cread.location().start_offset());
+                if let Some(inner) = recv.as_call_node() {
+                    if inner.receiver().is_none() && inner.name().as_slice() == b"binding" {
+                        let loc = node.location();
+                        let snippet = std::str::from_utf8(loc.as_slice()).unwrap_or("binding.pry");
+                        self.debugger_hits.push((
+                            loc.start_offset(),
+                            format!("Remove debugger entry point `{snippet}`."),
+                        ));
                     }
                 }
             }
         }
+
+        // Lint/BigDecimalNew
+        if node.call_operator_loc().is_some() {
+            if let Some(recv) = node.receiver() {
+                if let Some(cread) = is_bigdecimal_root(&recv) {
+                    if node.name().as_slice() == b"new" {
+                        self.bigdecimal_hits.push(cread.location().start_offset());
+                    }
+                }
+            }
+        }
+
         visit_call_node(self, node);
     }
 }
@@ -81,9 +107,22 @@ fn collect_offenses(path: String, source: String) -> Result<RArray, Error> {
         )?);
     }
 
-    let mut visitor = BigDecimalNewVisitor::default();
+    let mut visitor = NativeLintVisitor::default();
     visitor.visit(&parsed.node());
-    for off in visitor.hits {
+
+    for off in visitor.debugger_hits {
+        let (line, col) = offset_to_line_col(bytes, off.0);
+        rows.push(offense_hash(
+            &ruby,
+            &path,
+            line,
+            col,
+            &off.1,
+            "Lint/Debugger",
+        )?);
+    }
+
+    for off in visitor.bigdecimal_hits {
         let (line, col) = offset_to_line_col(bytes, off);
         rows.push(offense_hash(
             &ruby,
