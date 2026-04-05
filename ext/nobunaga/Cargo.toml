@@ -1,0 +1,12 @@
+[package]
+name = "nobunaga"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+magnus = "0.8"
+ruby-prism = "1.9"
