@@ -12,10 +12,12 @@ Ruby linter with a **Rust native extension** (Magnus + Prism via `ruby-prism`). 
 
 ```bash
 bundle exec nobunaga check [paths...]   # default: .
+bundle exec nobunaga check --format json [paths...]
 bundle exec nobunaga fix [paths...]     # safe autocorrect (in-place)
 ```
 
 - **`check`** — offenses を表示; 違反があれば終了コード `1`
+- **`check --format json`** — 診断の JSON 配列（エディタ・CI 向け）
 - **`fix`** — 重ならない `Correction` を適用し、残りを表示; 残違反があれば `1`
 
 ## Native engine

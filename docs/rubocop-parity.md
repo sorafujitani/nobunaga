@@ -22,6 +22,7 @@ For each **Implemented** cop we track:
 
 | Cop | Status | Notes |
 |-----|--------|--------|
+| `Lint/Debugger` | Partial | Native: `debugger` and `binding.pry` only (RuboCop default set is larger); line parity in `test/parity/debugger_test.rb` |
 | `Lint/BigDecimalNew` | Implemented | Native engine (Prism AST); line vs RuboCop checked in `test/parity/big_decimal_new_test.rb` |
 | `Layout/TrailingWhitespace` | Implemented | Ruby engine; autocorrect supported |
 | `Syntax/PrismParseError` | Implemented | Native Prism parse errors; not a RuboCop cop |

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require "optparse"
 
 module Nobunaga
@@ -10,7 +11,7 @@ module Nobunaga
 
     def start(argv)
       global = OptionParser.new do |o|
-        o.banner = "Usage: nobunaga check [paths...]\n       nobunaga fix [paths...]\n       nobunaga --help"
+        o.banner = "Usage: nobunaga check [options] [paths...]\n       nobunaga fix [paths...]\n       nobunaga --help"
         o.on("-h", "--help", "Show help") do
           puts o.help
           exit 0
@@ -30,23 +31,47 @@ module Nobunaga
         return 2
       end
 
-      paths = args.empty? ? ["."] : args
       runner = Runner.new
 
       case command
       when "check"
+        format = "text"
+        check_opts = OptionParser.new do |o|
+          o.on("--format FMT", String, "Output format: text (default) or json") do |f|
+            format = f
+          end
+        end
+        check_opts.parse!(args)
+        unless %w[text json].include?(format)
+          warn "nobunaga: unknown format #{format.inspect} (expected text or json)"
+          return 2
+        end
+
+        paths = args.empty? ? ["."] : args
         offenses = runner.check_paths(paths)
-        offenses.each { |off| puts format_offense(off) }
+        if format == "json"
+          puts JSON.generate(offenses.map { |off| offense_to_h(off) })
+        else
+          offenses.each { |off| puts format_offense(off) }
+        end
         offenses.empty? ? 0 : 1
       when "fix"
-        changed, remaining = runner.fix_paths(paths)
+        paths = args.empty? ? ["."] : args
+        _changed, remaining = runner.fix_paths(paths)
         remaining.each { |off| puts format_offense(off) }
-        if remaining.any?
-          1
-        else
-          changed.positive? ? 0 : 0
-        end
+        remaining.any? ? 1 : 0
       end
+    end
+
+    def offense_to_h(off)
+      {
+        "path" => off.path,
+        "line" => off.line,
+        "column" => off.column,
+        "message" => off.message,
+        "rule_id" => off.rule_id,
+        "autocorrectable" => off.autocorrectable?
+      }
     end
 
     def format_offense(off)
